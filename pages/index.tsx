@@ -5,7 +5,6 @@ import Link from 'next/link';
 import * as ethers from 'ethers';
 import detectEthereumProvider from '@metamask/detect-provider';
 import ProxyComponent from '../components/proxy-component';
-
 const XCMTransactorDemo = () => {
   // Initial State
   const [account, setAccount] = useState('Not Connected');
