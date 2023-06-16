@@ -19,6 +19,8 @@
     "@polkadot/util": "^11.1.2",
     "@polkadot/util-crypto": "^11.1.2",
     "@types/react": "18.0.1",
+    "@walletconnect/client": "^1.8.0",
+    "@walletconnect/qrcode-modal": "^1.8.0",
     "async": "^3.2.3",
     "ethers": "^5.5.3",
     "isomorphic-fetch": "^3.0.0",

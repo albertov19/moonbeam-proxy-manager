@@ -47,7 +47,7 @@ const proxyTypes = [
   },
 ];
 
-const ProxyComponent = ({ account }) => {
+const ProxyComponent = ({ account, connector, provider }) => {
   // Variables
   const [proxies, setProxies] = useState(Array());
   const [proxy, setProxy] = useState('');
@@ -72,9 +72,11 @@ const ProxyComponent = ({ account }) => {
     try {
       const api = await polkadotProvider();
 
-      const proxyAccounts = (await api.query.proxy.proxies(account)).toHuman()[0];
+      if (account) {
+        const proxyAccounts = (await api.query.proxy.proxies(account)).toHuman()[0];
 
-      setProxies(proxyAccounts);
+        setProxies(proxyAccounts);
+      }
     } catch (err) {
       setErrorMessage(err.message);
     }
@@ -128,14 +130,22 @@ const ProxyComponent = ({ account }) => {
   };
 
   const addProxy = async () => {
-    const proxyPrecompile = proxyInstance();
+    const proxyPrecompile = proxyInstance(provider);
 
     setLoading(true);
     setErrorMessage('');
 
     try {
-      const tx = await proxyPrecompile.addProxy(proxy, proxyType, delay);
-      await tx.wait();
+      const txData = await proxyPrecompile.populateTransaction.addProxy(proxy, proxyType, delay);
+
+      const txHash = await connector.sendTransaction({
+        from: account,
+        to: txData.to,
+        data: txData.data,
+      });
+
+      console.log(txHash);
+      await provider.waitForTransaction(txHash);
 
       await getProxys();
     } catch (err) {
@@ -146,15 +156,26 @@ const ProxyComponent = ({ account }) => {
   };
 
   const removeProxy = async (proxyInfo) => {
-    const proxyPrecompile = proxyInstance();
+    const proxyPrecompile = proxyInstance(provider);
 
     setLoading(true);
     setErrorMessage('');
 
     try {
       const proxyIndex = proxyTypes.findIndex((proxyType) => proxyType.text === proxyInfo.proxyType);
-      const tx = await proxyPrecompile.removeProxy(proxyInfo.delegate, proxyIndex, proxyInfo.delay);
-      await tx.wait();
+      const txData = await proxyPrecompile.populateTransaction.removeProxy(
+        proxyInfo.delegate,
+        proxyIndex,
+        proxyInfo.delay
+      );
+
+      const txHash = await connector.sendTransaction({
+        from: account,
+        to: txData.to,
+        data: txData.data,
+      });
+
+      await provider.waitForTransaction(txHash);
 
       await getProxys();
     } catch (err) {
@@ -165,14 +186,20 @@ const ProxyComponent = ({ account }) => {
   };
 
   const removeAll = async () => {
-    const proxyPrecompile = proxyInstance();
+    const proxyPrecompile = proxyInstance(provider);
 
     setLoading(true);
     setErrorMessage('');
 
     try {
-      const tx = await proxyPrecompile.removeProxies();
-      await tx.wait();
+      const txData = await proxyPrecompile.populateTransaction.removeProxies();
+      const txHash = await connector.sendTransaction({
+        from: account,
+        to: txData.to,
+        data: txData.data,
+      });
+
+      await provider.waitForTransaction(txHash);
 
       await getProxys();
     } catch (err) {
