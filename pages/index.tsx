@@ -3,92 +3,75 @@ import { Container, Button, Menu, Icon } from 'semantic-ui-react';
 import Head from 'next/head';
 import Link from 'next/link';
 import * as ethers from 'ethers';
+import detectEthereumProvider from '@metamask/detect-provider';
 import ProxyComponent from '../components/proxy-component';
-import WalletConnect from '@walletconnect/client';
-import QRCodeModal from '@walletconnect/qrcode-modal';
-import { SUPPORTED_NETWORKS } from '../web3/supportedNetworks';
-
-const ProxyManager = () => {
+const XCMTransactorDemo = () => {
   // Initial State
-  const [account, setAccount] = useState(null);
-  const [chainId, setChainId] = useState(null);
-  const [connector, setConnector] = useState(null);
-  const [provider, setProvider] = useState(null);
-  const [fetching, setFetching] = useState(false);
+  const [account, setAccount] = useState('Not Connected');
+  const [connected, setConnected] = useState(false);
+  const [connectedAPI, setConnectedAPI] = useState(false);
+  const [networkName, setNetworkName] = useState('Not Connected');
 
   useEffect(() => {
-    const onConnect = async (chainId, connectedAccount) => {
-      setAccount(connectedAccount);
-      setChainId(chainId);
+    async () => {
+      await checkMetamask();
+    };
+
+    // Check for changes in Metamask (account and chain)
+    if ((window as any).ethereum) {
+      (window as any).ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
+      (window as any).ethereum.on('accountsChanged', () => {
+        window.location.reload();
+      });
+    }
+  }, []);
+
+  const checkMetamask = async () => {
+    const provider = (await detectEthereumProvider({ mustBeMetaMask: true })) as any;
+
+    if (provider) {
+      const chainId = await provider.request({
+        method: 'eth_chainId',
+      });
 
       let networkName;
-      console.log(chainId);
       switch (chainId) {
-        case 1287:
-        case 1285:
-        case 1284:
-          const provider = new ethers.providers.JsonRpcProvider(SUPPORTED_NETWORKS[chainId].rpc_url, {
-            chainId,
-            name: SUPPORTED_NETWORKS[chainId].name,
-          });
-
-          setProvider(provider);
+        case '0x507':
+          networkName = 'Moonbase Alpha';
+          break;
+        case '0x505':
+          networkName = 'Moonriver';
+          break;
+        case '0x504':
+          networkName = 'Moonbeam';
           break;
         default:
+          networkName = '';
           setAccount('Only Moonbeam, Moonriver and Moonbase Alpha are Supported');
           break;
       }
-    };
+      if (networkName !== '') {
+        setNetworkName(networkName);
+        const accounts = await (window as any).ethereum.request({
+          method: 'eth_requestAccounts',
+        });
 
-    const refreshData = async () => {
-      const { chainId, accounts } = connector;
-      await onConnect(chainId, accounts[0]);
-      setFetching(false);
-    };
-
-    if (connector) {
-      connector.on('connect', async (error, payload) => {
-        const { chainId, accounts } = payload.params[0];
-        await onConnect(chainId, accounts[0]);
-        setFetching(false);
-      });
-
-      connector.on('disconnect', (error, payload) => {
-        if (error) {
-          throw error;
+        // Update State
+        if (accounts) {
+          setAccount(ethers.utils.getAddress(accounts[0]));
+          setConnected(true);
         }
-        resetApp();
-      });
-
-      if ((!chainId || !account) && connector.connected) {
-        refreshData();
       }
+    } else {
+      // MetaMask not detected
+      setAccount('MetaMask not Detected');
     }
-  }, [connector, chainId, account]);
-
-  const resetApp = () => {
-    setConnector(null);
-    setFetching(false);
-    setAccount(null);
-    setChainId(null);
   };
 
-  const killSession = () => {
-    // Make sure the connector exists before trying to kill the session
-    if (connector) {
-      connector.killSession();
-    }
-    resetApp();
-  };
-
-  const connectWallet = async () => {
-    const connector = new WalletConnect({ bridge: 'https://bridge.walletconnect.org', qrcodeModal: QRCodeModal });
-
-    if (!connector.connected) {
-      await connector.createSession();
-    }
-
-    setConnector(connector);
+  const onConnect = async () => {
+    await checkMetamask();
   };
 
   return (
@@ -105,26 +88,22 @@ const ProxyManager = () => {
         </Link>
         <Menu.Menu position='right'>
           <a className='item'> {account} </a>
-          {connector?.connected ? (
-            <Button floated='right' icon labelPosition='left' color='red' onClick={killSession} primary>
-              <Icon name='window close outline'></Icon>
-              Disconnect
+          {{ connected }.connected ? (
+            <Button floated='right' icon labelPosition='left' color='green'>
+              <Icon name='check'></Icon>
+              {networkName}
             </Button>
           ) : (
-            <Button floated='right' icon labelPosition='left' onClick={connectWallet} primary>
+            <Button floated='right' icon labelPosition='left' onClick={onConnect} primary>
               <Icon name='plus square'></Icon>
-              Connect Wallet
+              Connect MetaMask
             </Button>
           )}
         </Menu.Menu>
       </Menu>
       <br />
       <h2>Moonbeam Proxy Manager</h2>
-      {connector?.connected ? (
-        <ProxyComponent account={account} connector={connector} provider={provider} />
-      ) : (
-        <h3>Connect Wallet</h3>
-      )}
+      {{ connected }.connected ? <ProxyComponent account={account} /> : <h3>Connect Metamask</h3>}
       <br />
       <p>
         <b>Use at your own Risk!</b>
@@ -138,4 +117,4 @@ const ProxyManager = () => {
   );
 };
 
-export default ProxyManager;
+export default XCMTransactorDemo;
