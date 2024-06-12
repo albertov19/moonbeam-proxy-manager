@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Message, Table, Input, Dropdown } from 'semantic-ui-react';
+import {
+  Form,
+  Button,
+  Container,
+  Message,
+  Table,
+  Input,
+  Dropdown,
+} from 'semantic-ui-react';
 import { polkadotProvider } from '../web3/polkadotAPI';
 import * as ethers from 'ethers';
 import proxyInstance from '../web3/proxy';
@@ -52,7 +60,7 @@ const ProxyComponent = ({ account }) => {
   const [proxies, setProxies] = useState(Array());
   const [proxy, setProxy] = useState('');
   const [proxyType, setProxyType] = useState('');
-  const [delay, setDelay] = useState('');
+  const [delay, setDelay] = useState('0');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -72,7 +80,9 @@ const ProxyComponent = ({ account }) => {
     try {
       const api = await polkadotProvider();
 
-      const proxyAccounts = (await api.query.proxy.proxies(account)).toHuman()[0];
+      const proxyAccounts = (
+        await api.query.proxy.proxies(account)
+      ).toHuman()[0];
 
       setProxies(proxyAccounts);
     } catch (err) {
@@ -152,8 +162,14 @@ const ProxyComponent = ({ account }) => {
     setErrorMessage('');
 
     try {
-      const proxyIndex = proxyTypes.findIndex((proxyType) => proxyType.text === proxyInfo.proxyType);
-      const tx = await proxyPrecompile.removeProxy(proxyInfo.delegate, proxyIndex, proxyInfo.delay);
+      const proxyIndex = proxyTypes.findIndex(
+        (proxyType) => proxyType.text === proxyInfo.proxyType
+      );
+      const tx = await proxyPrecompile.removeProxy(
+        proxyInfo.delegate,
+        proxyIndex,
+        proxyInfo.delay
+      );
       await tx.wait();
 
       await getProxys();
@@ -198,19 +214,31 @@ const ProxyComponent = ({ account }) => {
           }}
         />
         <Header as='h5'>Select Proxy Type:</Header>
-        <Dropdown clearable placeholder=' Proxy Type' selection options={proxyTypes} onChange={handleChange} />
+        <Dropdown
+          clearable
+          placeholder=' Proxy Type'
+          selection
+          options={proxyTypes}
+          onChange={handleChange}
+        />
         <br />
         <br />
         <Input
           fluid
           label={{ content: 'Enter Delay:' }}
-          placeholder='Delay...'
+          placeholder='Delay... (Default = 0)'
           onChange={(input) => {
             setDelay(input.target.value);
           }}
         />
         <br />
-        <Button type='submit' color='orange' loading={loading} onClick={() => addProxy()} disabled={loading}>
+        <Button
+          type='submit'
+          color='orange'
+          loading={loading}
+          onClick={() => addProxy()}
+          disabled={loading}
+        >
           Add Proxy
         </Button>
 
@@ -227,7 +255,13 @@ const ProxyComponent = ({ account }) => {
           <Body>{renderRows()}</Body>
         </Table>
 
-        <Button type='submit' color='red' loading={loading} onClick={() => removeAll()} disabled={loading}>
+        <Button
+          type='submit'
+          color='red'
+          loading={loading}
+          onClick={() => removeAll()}
+          disabled={loading}
+        >
           Remove All Proxies
         </Button>
         <Message error header='Oops!' content={errorMessage} />
