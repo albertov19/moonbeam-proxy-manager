@@ -7,57 +7,25 @@ import {
   Table,
   Input,
   Dropdown,
+  Header as SemanticHeader,
 } from 'semantic-ui-react';
 import { polkadotProvider } from '../web3/polkadotAPI';
 import * as ethers from 'ethers';
 import proxyInstance from '../web3/proxy';
 
 const proxyTypes = [
-  {
-    key: 0,
-    text: 'Any',
-    value: 0,
-  },
-  {
-    key: 1,
-    text: 'NonTransfer',
-    value: 1,
-  },
-  {
-    key: 2,
-    text: 'Governance',
-    value: 2,
-  },
-  {
-    key: 3,
-    text: 'Staking',
-    value: 3,
-  },
-  {
-    key: 4,
-    text: 'CancelProxy',
-    value: 4,
-  },
-  {
-    key: 5,
-    text: 'Balances',
-    value: 5,
-  },
-  {
-    key: 6,
-    text: 'AuthorMapping',
-    value: 6,
-  },
-  {
-    key: 7,
-    text: 'IdentityJudgement',
-    value: 7,
-  },
+  { key: 0, text: 'Any', value: 0 },
+  { key: 1, text: 'NonTransfer', value: 1 },
+  { key: 2, text: 'Governance', value: 2 },
+  { key: 3, text: 'Staking', value: 3 },
+  { key: 4, text: 'CancelProxy', value: 4 },
+  { key: 5, text: 'Balances', value: 5 },
+  { key: 6, text: 'AuthorMapping', value: 6 },
+  { key: 7, text: 'IdentityJudgement', value: 7 },
 ];
 
 const ProxyComponent = ({ account }) => {
-  // Variables
-  const [proxies, setProxies] = useState(Array());
+  const [proxies, setProxies] = useState([]);
   const [proxy, setProxy] = useState('');
   const [proxyType, setProxyType] = useState('');
   const [delay, setDelay] = useState('0');
@@ -66,24 +34,21 @@ const ProxyComponent = ({ account }) => {
 
   useEffect(() => {
     const loadData = async () => {
-      // Get API Provider
-      await getProxys();
+      await getProxies();
     };
 
     loadData();
   }, []);
 
-  const getProxys = async () => {
+  const getProxies = async () => {
     setLoading(true);
     setErrorMessage('');
 
     try {
       const api = await polkadotProvider();
-
       const proxyAccounts = (
         await api.query.proxy.proxies(account)
       ).toHuman()[0];
-
       setProxies(proxyAccounts);
     } catch (err) {
       setErrorMessage(err.message);
@@ -93,16 +58,11 @@ const ProxyComponent = ({ account }) => {
   };
 
   const renderRows = () => {
-    if (proxies.length !== 0) {
-      return proxies.map((proxy) => {
-        return renderRow(proxy);
-      });
-    }
+    return proxies.length > 0 ? proxies.map((proxy) => renderRow(proxy)) : null;
   };
 
   const renderRow = (proxy) => {
     const { Row, Cell } = Table;
-
     return (
       <Row key={proxy.delegate}>
         <Cell>{proxy.delegate}</Cell>
@@ -112,28 +72,23 @@ const ProxyComponent = ({ account }) => {
           <Button
             color='orange'
             loading={loading}
-            onClick={() => {
-              removeProxy(proxy);
-            }}
+            onClick={() => removeProxy(proxy)}
             disabled={loading}
           >
-            {' '}
-            Remove{' '}
+            Remove
           </Button>
         </Cell>
       </Row>
     );
   };
 
-  const checkAddress = (account) => {
-    if (ethers.utils.isAddress(account)) {
-      return ethers.utils.getAddress(account);
-    } else {
-      return account;
-    }
+  const checkAddress = (address) => {
+    return ethers.utils.isAddress(address)
+      ? ethers.utils.getAddress(address)
+      : address;
   };
 
-  const handleChange = (_, { value }) => {
+  const handleChange = (e, { value }) => {
     setProxyType(value);
   };
 
@@ -146,8 +101,7 @@ const ProxyComponent = ({ account }) => {
     try {
       const tx = await proxyPrecompile.addProxy(proxy, proxyType, delay);
       await tx.wait();
-
-      await getProxys();
+      await getProxies();
     } catch (err) {
       setErrorMessage(err.message);
     }
@@ -163,7 +117,7 @@ const ProxyComponent = ({ account }) => {
 
     try {
       const proxyIndex = proxyTypes.findIndex(
-        (proxyType) => proxyType.text === proxyInfo.proxyType
+        (type) => type.text === proxyInfo.proxyType
       );
       const tx = await proxyPrecompile.removeProxy(
         proxyInfo.delegate,
@@ -171,8 +125,7 @@ const ProxyComponent = ({ account }) => {
         proxyInfo.delay
       );
       await tx.wait();
-
-      await getProxys();
+      await getProxies();
     } catch (err) {
       setErrorMessage(err.message);
     }
@@ -189,8 +142,7 @@ const ProxyComponent = ({ account }) => {
     try {
       const tx = await proxyPrecompile.removeProxies();
       await tx.wait();
-
-      await getProxys();
+      await getProxies();
     } catch (err) {
       setErrorMessage(err.message);
     }
@@ -198,25 +150,27 @@ const ProxyComponent = ({ account }) => {
     setLoading(false);
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    addProxy();
+  };
+
   const { Header, Row, HeaderCell, Body } = Table;
 
   return (
     <Container>
-      <Form error={!!{ errorMessage }.errorMessage}>
+      <Form error={!!errorMessage} onSubmit={handleSubmit}>
         <h3>Add Proxy</h3>
         <Input
           fluid
           label={{ content: 'Enter Proxy Address:' }}
           placeholder='Proxy Address...'
-          onChange={(input) => {
-            let address = checkAddress(input.target.value);
-            setProxy(address);
-          }}
+          onChange={(e) => setProxy(checkAddress(e.target.value))}
         />
-        <Header as='h5'>Select Proxy Type:</Header>
+        <SemanticHeader as='h5'>Select Proxy Type:</SemanticHeader>
         <Dropdown
           clearable
-          placeholder=' Proxy Type'
+          placeholder='Proxy Type'
           selection
           options={proxyTypes}
           onChange={handleChange}
@@ -226,22 +180,18 @@ const ProxyComponent = ({ account }) => {
         <Input
           fluid
           label={{ content: 'Enter Delay:' }}
-          placeholder='Delay... (Default = 0)'
-          onChange={(input) => {
-            setDelay(input.target.value);
-          }}
+          placeholder='Default = 0'
+          onChange={(e) => setDelay(e.target.value)}
         />
         <br />
         <Button
           type='submit'
           color='orange'
           loading={loading}
-          onClick={() => addProxy()}
           disabled={loading}
         >
           Add Proxy
         </Button>
-
         <h3>Proxy List</h3>
         <Table>
           <Header>
@@ -254,12 +204,11 @@ const ProxyComponent = ({ account }) => {
           </Header>
           <Body>{renderRows()}</Body>
         </Table>
-
         <Button
-          type='submit'
+          type='button'
           color='red'
           loading={loading}
-          onClick={() => removeAll()}
+          onClick={removeAll}
           disabled={loading}
         >
           Remove All Proxies
