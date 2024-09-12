@@ -10,32 +10,48 @@ const ProxyManager = () => {
   const [account, setAccount] = useState('Not Connected');
   const [connected, setConnected] = useState(false);
   const [networkName, setNetworkName] = useState('Not Connected');
+  const [navi, setNavigator] = useState<Navigator | undefined>(undefined);
 
   useEffect(() => {
-    const initialize = async () => {
-      await checkMetamask();
-    };
-    initialize();
+    setNavigator(navigator);
 
-    if ((window as any).ethereum) {
-      (window as any).ethereum.on('chainChanged', () => {
-        window.location.reload();
+    const initProvider = async () => {
+      // Check for changes in Metamask (account and chain)
+      const provider: any = await detectEthereumProvider({
+        mustBeMetaMask: true,
       });
-      (window as any).ethereum.on('accountsChanged', () => {
-        window.location.reload();
-      });
-    }
+
+      if (provider) {
+        provider.on('chainChanged', () => {
+          window.location.reload();
+        });
+        provider.on('accountsChanged', () => {
+          window.location.reload();
+        });
+      }
+    };
+
+    initProvider();
   }, []);
 
   const checkMetamask = async () => {
-    const provider = (await detectEthereumProvider({
+    const provider: any = await detectEthereumProvider({
       mustBeMetaMask: true,
-    })) as any;
+    });
+    let accounts;
 
     if (provider) {
-      const chainId = await provider.request({ method: 'eth_chainId' });
-      let networkName;
+      accounts = await provider.request({
+        method: 'eth_requestAccounts',
+      });
 
+      const chainId = await provider.request({
+        method: 'eth_chainId',
+      });
+
+      console.log(chainId);
+
+      let networkName;
       switch (chainId) {
         case '0x507':
           networkName = 'Moonbase Alpha';
@@ -48,23 +64,20 @@ const ProxyManager = () => {
           break;
         default:
           networkName = '';
-          setAccount(
-            'Only Moonbeam, Moonriver and Moonbase Alpha are Supported'
-          );
+          setAccount('Only Moonbeam, Moonriver or Moonbase Alpha Supported');
           break;
       }
-
-      if (networkName) {
+      if (networkName !== '') {
         setNetworkName(networkName);
-        const accounts = await (window as any).ethereum.request({
-          method: 'eth_requestAccounts',
-        });
+
+        // Update State
         if (accounts) {
           setAccount(ethers.utils.getAddress(accounts[0]));
           setConnected(true);
         }
       }
     } else {
+      // MetaMask not detected
       setAccount('MetaMask not Detected');
     }
   };
